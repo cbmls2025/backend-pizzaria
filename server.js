@@ -8,6 +8,8 @@ app.use(express.json());
 
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const BASE_ID = "appez90saUxtb13uD";
+
+// IDs das tabelas e campos
 const CONFIG_TABLE_ID = "tbl5l7jUfoiMlFUt7";
 const TAXA_FIELD_ID = "fldcyEPa2zmZ9AxRm";
 
@@ -16,31 +18,53 @@ console.log("🚀 Servidor iniciado!");
 // ==================== ROTA PARA BUSCAR TAXA DE ENTREGA ====================
 app.get("/taxa-entrega", async (req, res) => {
     try {
-        console.log("💰 Buscando taxa no Airtable...");
+        console.log("💰 Buscando taxa de entrega...");
+        
+        // Usando o ID da tabela Configurações
         const url = `https://api.airtable.com/v0/${BASE_ID}/${CONFIG_TABLE_ID}`;
+        
         const response = await axios.get(url, {
-            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+            headers: {
+                'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
         });
         
-        let taxa = 5.00;
+        console.log("Resposta do Airtable:", response.data);
+        
+        let taxa = 5.00; // valor padrão
         
         if (response.data.records && response.data.records.length > 0) {
-            const fields = response.data.records[0].fields;
-            const valor = fields[TAXA_FIELD_ID];
+            // Pega o primeiro registro da tabela
+            const record = response.data.records[0];
+            const fields = record.fields;
+            
+            console.log("Campos encontrados:", Object.keys(fields));
+            
+            // Tenta buscar pelo ID do campo
+            let valor = fields[TAXA_FIELD_ID];
+            
+            // Se não encontrar pelo ID, tenta pelo nome
+            if (valor === undefined) valor = fields.taxa_entrega;
+            if (valor === undefined) valor = fields["taxa_entrega"];
             
             if (valor !== undefined && valor !== null) {
                 taxa = parseFloat(valor);
                 console.log("✅ Taxa encontrada: R$", taxa);
             } else {
-                console.log("⚠️ Campo taxa_entrega não encontrado");
+                console.log("⚠️ Campo taxa_entrega não encontrado nos registros");
             }
         } else {
             console.log("⚠️ Nenhum registro na tabela Configurações");
         }
         
         res.json({ taxa: taxa });
+        
     } catch (error) {
         console.error("❌ Erro ao buscar taxa:", error.message);
+        if (error.response) {
+            console.error("Detalhes do erro:", error.response.data);
+        }
         res.json({ taxa: 5.00 });
     }
 });
