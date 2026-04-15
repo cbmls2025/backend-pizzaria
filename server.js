@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// O token agora vem da variável de ambiente (configurada no Render)
+// O token vem da variável de ambiente no Render
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const BASE_ID = "appez90saUxtb13uD";
 const TABLE_NAME = "Pedidos";
@@ -15,12 +15,15 @@ const TABLE_NAME = "Pedidos";
 // Verifica se o token está configurado
 if (!AIRTABLE_TOKEN) {
     console.error("❌ ERRO: Variável AIRTABLE_TOKEN não configurada!");
-    process.exit(1);
+    // Não encerra o processo, apenas avisa
 }
 
 // ==================== ENDPOINT PARA BUSCAR PRODUTOS ====================
 app.get("/produtos", async (req, res) => {
     try {
+        if (!AIRTABLE_TOKEN) {
+            return res.status(500).json({ error: "Token não configurado" });
+        }
         const url = `https://api.airtable.com/v0/${BASE_ID}/Produtos`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
@@ -35,6 +38,9 @@ app.get("/produtos", async (req, res) => {
 // ==================== ENDPOINT PARA BUSCAR ADICIONAIS ====================
 app.get("/adicionais", async (req, res) => {
     try {
+        if (!AIRTABLE_TOKEN) {
+            return res.status(500).json({ error: "Token não configurado" });
+        }
         const url = `https://api.airtable.com/v0/${BASE_ID}/Adicionais`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
@@ -53,6 +59,10 @@ app.post("/pedido", async (req, res) => {
     const { cliente, telefone, endereco, itens, adicionais, formaPagamento, tipoEntrega, subtotal, taxaEntrega, total, data } = req.body;
     
     try {
+        if (!AIRTABLE_TOKEN) {
+            return res.status(500).json({ success: false, error: "Token não configurado" });
+        }
+        
         const response = await axios.post(
             `https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`,
             {
