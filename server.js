@@ -18,6 +18,35 @@ if (!AIRTABLE_TOKEN) {
     process.exit(1);
 }
 
+// ==================== ENDPOINT PARA BUSCAR PRODUTOS ====================
+app.get("/produtos", async (req, res) => {
+    try {
+        const url = `https://api.airtable.com/v0/${BASE_ID}/Produtos`;
+        const response = await axios.get(url, {
+            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error("❌ Erro ao buscar produtos:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==================== ENDPOINT PARA BUSCAR ADICIONAIS ====================
+app.get("/adicionais", async (req, res) => {
+    try {
+        const url = `https://api.airtable.com/v0/${BASE_ID}/Adicionais`;
+        const response = await axios.get(url, {
+            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+        });
+        res.json(response.data);
+    } catch (error) {
+        console.error("❌ Erro ao buscar adicionais:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==================== ENDPOINT PARA RECEBER PEDIDOS ====================
 app.post("/pedido", async (req, res) => {
     console.log("📦 Pedido recebido:", req.body);
     
@@ -60,10 +89,12 @@ app.post("/pedido", async (req, res) => {
     }
 });
 
+// ==================== ROTA DE TESTE ====================
 app.get("/", (req, res) => {
     res.json({ message: "🚀 Servidor da Pizzaria Novo Sabor funcionando!" });
 });
 
+// ==================== INICIAR SERVIDOR ====================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
