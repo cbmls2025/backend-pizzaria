@@ -3,113 +3,105 @@ const axios = require("axios");
 const cors = require("cors");
 
 const app = express();
-app.use(cors());
+
+// Configuração CORS corrigida
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
 
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const BASE_ID = "appez90saUxtb13uD";
-
-// IDs das tabelas e campos
 const CONFIG_TABLE_ID = "tbl5l7jUfoiMlFUt7";
 const TAXA_FIELD_ID = "fldcyEPa2zmZ9AxRm";
 
 console.log("🚀 Servidor iniciado!");
+console.log("Token configurado:", AIRTABLE_TOKEN ? "✅ SIM" : "❌ NÃO");
 
-// ==================== ROTA PARA BUSCAR TAXA DE ENTREGA ====================
-app.get("/taxa-entrega", async (req, res) => {
+// Rota para verificar se a loja está aberta
+app.get("/status-loja", async (req, res) => {
     try {
-        console.log("💰 Buscando taxa de entrega...");
-        
-        // Usando o ID da tabela Configurações
         const url = `https://api.airtable.com/v0/${BASE_ID}/${CONFIG_TABLE_ID}`;
-        
         const response = await axios.get(url, {
-            headers: {
-                'Authorization': `Bearer ${AIRTABLE_TOKEN}`,
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
         });
         
-        console.log("Resposta do Airtable:", response.data);
-        
-        let taxa = 5.00; // valor padrão
-        
+        let lojaAberta = true;
         if (response.data.records && response.data.records.length > 0) {
-            // Pega o primeiro registro da tabela
-            const record = response.data.records[0];
-            const fields = record.fields;
-            
-            console.log("Campos encontrados:", Object.keys(fields));
-            
-            // Tenta buscar pelo ID do campo
-            let valor = fields[TAXA_FIELD_ID];
-            
-            // Se não encontrar pelo ID, tenta pelo nome
-            if (valor === undefined) valor = fields.taxa_entrega;
-            if (valor === undefined) valor = fields["taxa_entrega"];
-            
-            if (valor !== undefined && valor !== null) {
-                taxa = parseFloat(valor);
-                console.log("✅ Taxa encontrada: R$", taxa);
-            } else {
-                console.log("⚠️ Campo taxa_entrega não encontrado nos registros");
+            const fields = response.data.records[0].fields;
+            const aberta = fields.loja_aberta;
+            if (aberta !== undefined && aberta === false) {
+                lojaAberta = false;
             }
-        } else {
-            console.log("⚠️ Nenhum registro na tabela Configurações");
         }
-        
-        res.json({ taxa: taxa });
-        
+        res.json({ aberta: lojaAberta });
     } catch (error) {
-        console.error("❌ Erro ao buscar taxa:", error.message);
-        if (error.response) {
-            console.error("Detalhes do erro:", error.response.data);
-        }
-        res.json({ taxa: 5.00 });
+        console.error("Erro:", error.message);
+        res.json({ aberta: true });
     }
 });
 
-// ==================== ROTA PARA BUSCAR PRODUTOS ====================
+// Rota para buscar produtos
 app.get("/produtos", async (req, res) => {
     try {
-        console.log("📦 Buscando produtos...");
         const url = `https://api.airtable.com/v0/${BASE_ID}/Produtos`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
         });
-        console.log("✅ Produtos encontrados:", response.data.records?.length || 0);
         res.json(response.data);
     } catch (error) {
-        console.error("❌ Erro produtos:", error.message);
+        console.error("Erro produtos:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
 
-// ==================== ROTA PARA BUSCAR ADICIONAIS ====================
+// Rota para buscar adicionais
 app.get("/adicionais", async (req, res) => {
     try {
-        console.log("📦 Buscando adicionais...");
         const url = `https://api.airtable.com/v0/${BASE_ID}/Adicionais`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
         });
-        console.log("✅ Adicionais encontrados:", response.data.records?.length || 0);
         res.json(response.data);
     } catch (error) {
-        console.error("❌ Erro adicionais:", error.message);
+        console.error("Erro adicionais:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
 
-// ==================== ROTA PARA RECEBER PEDIDOS ====================
+// Rota para buscar taxa de entrega
+app.get("/taxa-entrega", async (req, res) => {
+    try {
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${CONFIG_TABLE_ID}`;
+        const response = await axios.get(url, {
+            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+        });
+        
+        let taxa = 5.00;
+        if (response.data.records && response.data.records.length > 0) {
+            const fields = response.data.records[0].fields;
+            const valor = fields[TAXA_FIELD_ID] || fields.taxa_entrega;
+            if (valor !== undefined && valor !== null) {
+                taxa = parseFloat(valor);
+            }
+        }
+        res.json({ taxa: taxa });
+    } catch (error) {
+        console.error("Erro taxa:", error.message);
+        res.json({ taxa: 5.00 });
+    }
+});
+
+// Rota para receber pedidos
 app.post("/pedido", async (req, res) => {
     console.log("📦 Pedido recebido:", req.body);
     
     const { cliente, telefone, endereco, itens, adicionais, formaPagamento, tipoEntrega, subtotal, taxaEntrega, total, data } = req.body;
     
     try {
-        const adicionaisTexto = (adicionais && adicionais !== "Nenhum adicional") ? adicionais : "Nenhum adicional";
-        
         const response = await axios.post(
             `https://api.airtable.com/v0/${BASE_ID}/Pedidos`,
             {
@@ -118,7 +110,7 @@ app.post("/pedido", async (req, res) => {
                     "telefone": telefone || "",
                     "endereço": endereco || "",
                     "itens": itens || "",
-                    "adicionais": adicionaisTexto,
+                    "adicionais": adicionais || "Nenhum adicional",
                     "formas de pagamento": formaPagamento || "",
                     "status do pagamento": "Pagamento na Entrega",
                     "status do pedido": "Novo",
@@ -139,7 +131,6 @@ app.post("/pedido", async (req, res) => {
         
         console.log("✅ Pedido salvo!");
         res.json({ success: true });
-        
     } catch (error) {
         console.error("❌ Erro:", error.message);
         res.status(500).json({ success: false, error: error.message });
