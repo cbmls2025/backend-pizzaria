@@ -31,7 +31,11 @@ app.get("/taxa-entrega", async (req, res) => {
             if (valor !== undefined && valor !== null) {
                 taxa = parseFloat(valor);
                 console.log("✅ Taxa encontrada: R$", taxa);
+            } else {
+                console.log("⚠️ Campo taxa_entrega não encontrado");
             }
+        } else {
+            console.log("⚠️ Nenhum registro na tabela Configurações");
         }
         
         res.json({ taxa: taxa });
@@ -44,12 +48,15 @@ app.get("/taxa-entrega", async (req, res) => {
 // ==================== ROTA PARA BUSCAR PRODUTOS ====================
 app.get("/produtos", async (req, res) => {
     try {
+        console.log("📦 Buscando produtos...");
         const url = `https://api.airtable.com/v0/${BASE_ID}/Produtos`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
         });
+        console.log("✅ Produtos encontrados:", response.data.records?.length || 0);
         res.json(response.data);
     } catch (error) {
+        console.error("❌ Erro produtos:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -57,12 +64,15 @@ app.get("/produtos", async (req, res) => {
 // ==================== ROTA PARA BUSCAR ADICIONAIS ====================
 app.get("/adicionais", async (req, res) => {
     try {
+        console.log("📦 Buscando adicionais...");
         const url = `https://api.airtable.com/v0/${BASE_ID}/Adicionais`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
         });
+        console.log("✅ Adicionais encontrados:", response.data.records?.length || 0);
         res.json(response.data);
     } catch (error) {
+        console.error("❌ Erro adicionais:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
