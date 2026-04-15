@@ -60,7 +60,6 @@ app.get("/taxa-entrega", async (req, res) => {
             const fields = response.data.records[0].fields;
             console.log("Campos encontrados:", Object.keys(fields));
             
-            // Tenta buscar pelo ID do campo ou pelo nome
             let valor = fields[TAXA_FIELD_ID];
             if (valor === undefined) valor = fields.taxa_entrega;
             if (valor === undefined) valor = fields["taxa_entrega"];
@@ -79,6 +78,39 @@ app.get("/taxa-entrega", async (req, res) => {
     } catch (error) {
         console.error("❌ Erro ao buscar taxa:", error.message);
         res.json({ taxa: 5.00 });
+    }
+});
+
+// ==================== ENDPOINT PARA VERIFICAR SE A LOJA ESTÁ ABERTA ====================
+app.get("/status-loja", async (req, res) => {
+    try {
+        console.log("🏪 Verificando status da loja...");
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${CONFIG_TABLE_ID}`;
+        const response = await axios.get(url, {
+            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+        });
+        
+        let lojaAberta = true; // valor padrão (aberta)
+        
+        if (response.data.records && response.data.records.length > 0) {
+            const fields = response.data.records[0].fields;
+            let aberta = fields.loja_aberta;
+            if (aberta === undefined) aberta = fields["loja_aberta"];
+            
+            if (aberta !== undefined) {
+                lojaAberta = aberta === true;
+                console.log("✅ Loja está:", lojaAberta ? "ABERTA" : "FECHADA");
+            } else {
+                console.log("⚠️ Campo loja_aberta não encontrado, usando padrão: ABERTA");
+            }
+        } else {
+            console.log("⚠️ Nenhum registro na tabela Configurações");
+        }
+        
+        res.json({ aberta: lojaAberta });
+    } catch (error) {
+        console.error("❌ Erro ao verificar status da loja:", error.message);
+        res.json({ aberta: true });
     }
 });
 
