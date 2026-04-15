@@ -20,10 +20,12 @@ console.log("Token configurado:", AIRTABLE_TOKEN ? "✅ SIM" : "❌ NÃO");
 // ==================== ENDPOINT PARA BUSCAR PRODUTOS ====================
 app.get("/produtos", async (req, res) => {
     try {
+        console.log("📦 Buscando produtos...");
         const url = `https://api.airtable.com/v0/${BASE_ID}/Produtos`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
         });
+        console.log("✅ Produtos encontrados:", response.data.records?.length || 0);
         res.json(response.data);
     } catch (error) {
         console.error("❌ Erro produtos:", error.message);
@@ -34,10 +36,12 @@ app.get("/produtos", async (req, res) => {
 // ==================== ENDPOINT PARA BUSCAR ADICIONAIS ====================
 app.get("/adicionais", async (req, res) => {
     try {
+        console.log("📦 Buscando adicionais...");
         const url = `https://api.airtable.com/v0/${BASE_ID}/Adicionais`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
         });
+        console.log("✅ Adicionais encontrados:", response.data.records?.length || 0);
         res.json(response.data);
     } catch (error) {
         console.error("❌ Erro adicionais:", error.message);
@@ -94,6 +98,8 @@ app.get("/status-loja", async (req, res) => {
         
         if (response.data.records && response.data.records.length > 0) {
             const fields = response.data.records[0].fields;
+            console.log("Campos encontrados:", Object.keys(fields));
+            
             let aberta = fields.loja_aberta;
             if (aberta === undefined) aberta = fields["loja_aberta"];
             
