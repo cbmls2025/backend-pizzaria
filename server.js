@@ -1,4 +1,4 @@
-// server.js
+// server.js - Backend completo para Pizzaria Novo Sabor
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
@@ -7,23 +7,21 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// O token vem da variável de ambiente no Render
+// Configuração do Airtable
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const BASE_ID = "appez90saUxtb13uD";
 const TABLE_NAME = "Pedidos";
+const CONFIG_TABLE_ID = "tbl5l7jUfoiMlFUt7";
+const TAXA_FIELD_ID = "fldcyEPa2zmZ9AxRm";
 
 // Verifica se o token está configurado
 if (!AIRTABLE_TOKEN) {
     console.error("❌ ERRO: Variável AIRTABLE_TOKEN não configurada!");
-    // Não encerra o processo, apenas avisa
 }
 
 // ==================== ENDPOINT PARA BUSCAR PRODUTOS ====================
 app.get("/produtos", async (req, res) => {
     try {
-        if (!AIRTABLE_TOKEN) {
-            return res.status(500).json({ error: "Token não configurado" });
-        }
         const url = `https://api.airtable.com/v0/${BASE_ID}/Produtos`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
@@ -38,9 +36,6 @@ app.get("/produtos", async (req, res) => {
 // ==================== ENDPOINT PARA BUSCAR ADICIONAIS ====================
 app.get("/adicionais", async (req, res) => {
     try {
-        if (!AIRTABLE_TOKEN) {
-            return res.status(500).json({ error: "Token não configurado" });
-        }
         const url = `https://api.airtable.com/v0/${BASE_ID}/Adicionais`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
@@ -52,6 +47,28 @@ app.get("/adicionais", async (req, res) => {
     }
 });
 
+// ==================== ENDPOINT PARA BUSCAR TAXA DE ENTREGA ====================
+app.get("/taxa-entrega", async (req, res) => {
+    try {
+        const url = `https://api.airtable.com/v0/${BASE_ID}/${CONFIG_TABLE_ID}`;
+        const response = await axios.get(url, {
+            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+        });
+        
+        let taxa = 5.00; // valor padrão
+        if (response.data.records && response.data.records.length > 0) {
+            const valor = response.data.records[0].fields[TAXA_FIELD_ID];
+            if (valor !== undefined && valor !== null) {
+                taxa = parseFloat(valor);
+            }
+        }
+        res.json({ taxa: taxa });
+    } catch (error) {
+        console.error("❌ Erro ao buscar taxa:", error.message);
+        res.json({ taxa: 5.00 });
+    }
+});
+
 // ==================== ENDPOINT PARA RECEBER PEDIDOS ====================
 app.post("/pedido", async (req, res) => {
     console.log("📦 Pedido recebido:", req.body);
@@ -59,9 +76,8 @@ app.post("/pedido", async (req, res) => {
     const { cliente, telefone, endereco, itens, adicionais, formaPagamento, tipoEntrega, subtotal, taxaEntrega, total, data } = req.body;
     
     try {
-        if (!AIRTABLE_TOKEN) {
-            return res.status(500).json({ success: false, error: "Token não configurado" });
-        }
+        // CORREÇÃO: adicionais é apenas os adicionais selecionados
+        const adicionaisTexto = adicionais || "Nenhum adicional";
         
         const response = await axios.post(
             `https://api.airtable.com/v0/${BASE_ID}/${TABLE_NAME}`,
@@ -71,7 +87,7 @@ app.post("/pedido", async (req, res) => {
                     "telefone": telefone || "",
                     "endereço": endereco || "",
                     "itens": itens || "",
-                    "adicionais": adicionais || "",
+                    "adicionais": adicionaisTexto,
                     "formas de pagamento": formaPagamento || "",
                     "status do pagamento": "Pagamento na Entrega",
                     "status do pedido": "Novo",
@@ -104,7 +120,6 @@ app.get("/", (req, res) => {
     res.json({ message: "🚀 Servidor da Pizzaria Novo Sabor funcionando!" });
 });
 
-// ==================== INICIAR SERVIDOR ====================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando na porta ${PORT}`);
