@@ -17,7 +17,7 @@ const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const BASE_ID = "appez90saUxtb13uD";
 const CONFIG_TABLE_ID = "tbl5l7jUfoiMlFUt7";
 const TAXA_FIELD_ID = "fldcyEPa2zmZ9AxRm";
-const CATEGORIA_ADICIONAIS_ID = "fldRtS8YRVejxtl1R";  // NOVO: ID do campo Categoria
+const CATEGORIA_ADICIONAIS_ID = "fldRtS8YRVejxtl1R";
 
 console.log("🚀 Servidor iniciado!");
 console.log("Token configurado:", AIRTABLE_TOKEN ? "✅ SIM" : "❌ NÃO");
@@ -45,30 +45,77 @@ app.get("/status-loja", async (req, res) => {
     }
 });
 
-// Rota para buscar produtos
+// ==================== ROTA PARA BUSCAR TODOS OS PRODUTOS (COM PAGINAÇÃO) ====================
 app.get("/produtos", async (req, res) => {
     try {
-        const url = `https://api.airtable.com/v0/${BASE_ID}/Produtos`;
-        const response = await axios.get(url, {
-            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
-        });
-        res.json(response.data);
+        console.log("📦 Buscando todos os produtos...");
+        
+        let allRecords = [];
+        let offset = null;
+        let hasMore = true;
+        
+        while (hasMore) {
+            let url = `https://api.airtable.com/v0/${BASE_ID}/Produtos?pageSize=100`;
+            if (offset) {
+                url += `&offset=${offset}`;
+            }
+            
+            const response = await axios.get(url, {
+                headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+            });
+            
+            if (response.data.records && response.data.records.length > 0) {
+                allRecords = [...allRecords, ...response.data.records];
+            }
+            
+            offset = response.data.offset;
+            hasMore = !!offset;
+            
+            console.log(`📦 Carregados ${allRecords.length} produtos até agora...`);
+        }
+        
+        console.log(`✅ Total de produtos carregados: ${allRecords.length}`);
+        res.json({ records: allRecords });
+        
     } catch (error) {
-        console.error("Erro produtos:", error.message);
+        console.error("❌ Erro produtos:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
 
-// ==================== ROTA PARA BUSCAR ADICIONAIS (COM CATEGORIA) ====================
+// ==================== ROTA PARA BUSCAR TODOS OS ADICIONAIS (COM PAGINAÇÃO) ====================
 app.get("/adicionais", async (req, res) => {
     try {
-        const url = `https://api.airtable.com/v0/${BASE_ID}/Adicionais`;
-        const response = await axios.get(url, {
-            headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
-        });
+        console.log("📦 Buscando todos os adicionais...");
+        
+        let allRecords = [];
+        let offset = null;
+        let hasMore = true;
+        
+        while (hasMore) {
+            let url = `https://api.airtable.com/v0/${BASE_ID}/Adicionais?pageSize=100`;
+            if (offset) {
+                url += `&offset=${offset}`;
+            }
+            
+            const response = await axios.get(url, {
+                headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
+            });
+            
+            if (response.data.records && response.data.records.length > 0) {
+                allRecords = [...allRecords, ...response.data.records];
+            }
+            
+            offset = response.data.offset;
+            hasMore = !!offset;
+            
+            console.log(`📦 Carregados ${allRecords.length} adicionais até agora...`);
+        }
+        
+        console.log(`✅ Total de adicionais carregados: ${allRecords.length}`);
         
         // Processar os dados para incluir a categoria usando o ID do campo
-        const adicionaisProcessados = response.data.records.map(record => {
+        const adicionaisProcessados = allRecords.map(record => {
             const fields = record.fields;
             return {
                 id: record.id,
@@ -82,8 +129,9 @@ app.get("/adicionais", async (req, res) => {
         });
         
         res.json({ records: adicionaisProcessados });
+        
     } catch (error) {
-        console.error("Erro adicionais:", error.message);
+        console.error("❌ Erro adicionais:", error.message);
         res.status(500).json({ error: error.message });
     }
 });
