@@ -17,6 +17,7 @@ const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN;
 const BASE_ID = "appez90saUxtb13uD";
 const CONFIG_TABLE_ID = "tbl5l7jUfoiMlFUt7";
 const TAXA_FIELD_ID = "fldcyEPa2zmZ9AxRm";
+const CATEGORIA_ADICIONAIS_ID = "fldRtS8YRVejxtl1R";  // NOVO: ID do campo Categoria
 
 console.log("🚀 Servidor iniciado!");
 console.log("Token configurado:", AIRTABLE_TOKEN ? "✅ SIM" : "❌ NÃO");
@@ -58,14 +59,29 @@ app.get("/produtos", async (req, res) => {
     }
 });
 
-// Rota para buscar adicionais
+// ==================== ROTA PARA BUSCAR ADICIONAIS (COM CATEGORIA) ====================
 app.get("/adicionais", async (req, res) => {
     try {
         const url = `https://api.airtable.com/v0/${BASE_ID}/Adicionais`;
         const response = await axios.get(url, {
             headers: { 'Authorization': `Bearer ${AIRTABLE_TOKEN}` }
         });
-        res.json(response.data);
+        
+        // Processar os dados para incluir a categoria usando o ID do campo
+        const adicionaisProcessados = response.data.records.map(record => {
+            const fields = record.fields;
+            return {
+                id: record.id,
+                fields: {
+                    Nome: fields.Nome || "Adicional",
+                    Preço: fields.Preço || 0,
+                    Disponíveis: fields.Disponíveis === true,
+                    Categoria: fields[CATEGORIA_ADICIONAIS_ID] || fields.Categoria || ""
+                }
+            };
+        });
+        
+        res.json({ records: adicionaisProcessados });
     } catch (error) {
         console.error("Erro adicionais:", error.message);
         res.status(500).json({ error: error.message });
@@ -95,11 +111,11 @@ app.get("/taxa-entrega", async (req, res) => {
     }
 });
 
-// Rota para receber pedidos
+// ==================== ROTA PARA RECEBER PEDIDOS (COM OBSERVAÇÕES) ====================
 app.post("/pedido", async (req, res) => {
     console.log("📦 Pedido recebido:", req.body);
     
-    const { cliente, telefone, endereco, itens, adicionais, formaPagamento, tipoEntrega, subtotal, taxaEntrega, total, data } = req.body;
+    const { cliente, telefone, endereco, itens, adicionais, formaPagamento, tipoEntrega, subtotal, taxaEntrega, total, observacoes, data } = req.body;
     
     try {
         const response = await axios.post(
@@ -118,6 +134,7 @@ app.post("/pedido", async (req, res) => {
                     "subtotal": subtotal || 0,
                     "taxa entrega": taxaEntrega || 0,
                     "total": total || 0,
+                    "observacoes": observacoes || "",
                     "data do pedido": data || new Date().toISOString()
                 }
             },
